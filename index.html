@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ShadeSeat</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- ✅ PWA -->
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#000000">
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+
+<style>
+html,body{height:100%;margin:0;font-family:system-ui;background:#000}
+#map{position:fixed;inset:0;z-index:0}
+
+/* PANEL */
+.panel{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:340px;
+  background:linear-gradient(180deg,#151515,#0c0c0c);
+  padding:22px;
+  border-radius:16px;
+  color:#fff;
+  box-shadow:0 20px 60px rgba(0,0,0,.8);
+  transition:.4s;
+  z-index:1000;
+}
+.panel.side{left:20px;transform:translateY(-50%)}
+
+h3{margin:0 0 14px}
+
+/* INPUTS */
+.field{position:relative}
+input{
+  width:100%;
+  margin-top:10px;
+  padding:12px 14px;
+  border-radius:10px;
+  border:1px solid #2a2a2a;
+  background:#1a1a1a;
+  color:#fff;
+}
+input::placeholder{color:#999}
+input:focus{border-color:#ffa500;outline:none}
+
+/* BUTTONS */
+button{
+  width:100%;
+  margin-top:12px;
+  padding:12px;
+  border:none;
+  border-radius:10px;
+  background:#ffa500;
+  font-weight:700;
+  cursor:pointer;
+}
+
+/* SUGGESTIONS */
+.suggestions{
+  position:absolute;
+  width:100%;
+  background:#111;
+  border:1px solid #2a2a2a;
+  border-radius:10px;
+  max-height:180px;
+  overflow-y:auto;
+  z-index:9999;
+}
+.suggestions div{
+  padding:10px;
+  cursor:pointer;
+  border-bottom:1px solid #222;
+}
+.suggestions div:hover{background:#222}
+
+/* RESULT */
+#result{margin-top:14px;line-height:1.6}
+</style>
+
+<!-- ✅ Service Worker -->
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/static/sw.js");
+  });
+}
+</script>
+</head>
+
+<body>
+
+<div id="map"></div>
+
+<div class="panel" id="panel">
+  <h3>☀️ ShadeSeat</h3>
+
+  <div class="field">
+    <input id="start" placeholder="Start (City / State / Country)" autocomplete="off">
+    <div class="suggestions" id="sug1"></div>
+  </div>
+
+  <div class="field">
+    <input id="end" placeholder="Destination (City / Country)" autocomplete="off">
+    <div class="suggestions" id="sug2"></div>
+  </div>
+
+  <input type="date" id="date">
+  <input type="time" id="time">
+
+  <button onclick="useNow()">Use Current Time</button>
+  <button onclick="findSeat()">Submit</button>
+
+  <div id="result"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+const map = L.map('map').setView([20,0],2);
+L.tileLayer(
+ 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+).addTo(map);
+
+let route,startMarker,endMarker;
+
+// ---------- AUTOCOMPLETE ----------
+async function auto(input,box){
+  input.oninput = async ()=>{
+    box.innerHTML="";
+    if(input.value.length<2) return;
+
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=json&limit=6&q=${input.value}&addressdetails=1`
+    );
+    const d = await r.json();
+
+    d.forEach(p=>{
+      const a=p.address||{};
+      if(!(a.city||a.state||a.country)) return;
+
+      const div=document.createElement("div");
+      div.textContent=p.display_name;
+      div.onclick=()=>{input.value=p.display_name;box.innerHTML=""};
+      box.appendChild(div);
+    });
+  };
+}
+
+auto(start,sug1);
+auto(end,sug2);
+
+// ---------- TIME ----------
+function useNow(){
+  const n=new Date();
+  date.value=n.toISOString().slice(0,10);
+  time.value=n.toTimeString().slice(0,5);
+}
+
+// ---------- MAIN ----------
+async function findSeat(){
+  const r=await fetch(
+    `/shade-seat?start=${start.value}&end=${end.value}&date=${date.value}&time=${time.value}`
+  );
+  const d=await r.json();
+  if(d.status!=="success"){alert("Location not found");return}
+
+  panel.classList.add("side");
+
+  if(route) map.removeLayer(route);
+  if(startMarker) map.removeLayer(startMarker);
+  if(endMarker) map.removeLayer(endMarker);
+
+  startMarker=L.marker(d.start).addTo(map);
+  endMarker=L.marker(d.end).addTo(map);
+  route=L.polyline([d.start,d.end],{color:"lime",weight:4}).addTo(map);
+
+  map.fitBounds(route.getBounds());
+
+  result.innerHTML=
+   `📏 Distance: ${d.distance} km<br>
+    ☀️ Sun on <b>${d.sun_side}</b><br>
+    🪑 Best seat: <b>${d.seat}</b>`;
+}
+</script>
+
+</body>
+</html>
+

@@ -1,0 +1,68 @@
+html,body{margin:0;height:100%;font-family:system-ui}
+
+#map{
+  position:fixed;
+  inset:0;
+  z-index:0;
+}
+
+.panel{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  width:320px;
+  background:#111;
+  color:#fff;
+  padding:20px;
+  border-radius:14px;
+  z-index:10;
+  transition:.5s;
+}
+
+.panel.move{
+  left:20px;
+  top:20px;
+  transform:none;
+}
+
+.field{position:relative;margin-bottom:10px}
+
+.panel input{
+  width:100%;
+  background:#1b1b1b;
+  color:#fff;
+  border:1px solid #333;
+  padding:12px;
+  border-radius:10px;
+}
+
+.panel button{
+  width:100%;
+  padding:12px;
+  background:#ffa500;
+  border:none;
+  border-radius:10px;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.suggestions{
+  position:absolute;
+  top:44px;
+  left:0;
+  right:0;
+  background:#111;
+  max-height:180px;
+  overflow:auto;
+  z-index:999;
+}
+
+.suggestions div{
+  padding:10px;
+  border-bottom:1px solid #222;
+  cursor:pointer;
+}
+
+.suggestions div:hover{background:#222}
+
